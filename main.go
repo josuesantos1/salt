@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"os"
+	"flag"
 	"github.com/andybalholm/brotli"
 	"github.com/pelletier/go-toml/v2"
 )
@@ -90,14 +91,30 @@ func main() {
 		}
 	}
 
-	log.Printf("Salt HTTP server starting on %s...", cfg.Address)
+	flag.Parse()
+	args := flag.Args()
+	if len(args) > 0 {
+		cfg.Root = args[0]
+	}
+	if len(args) > 1 {
+		cfg.Address = args[1]
+	}
+
+	log.Printf("Salt HTTP server starting on %s serving %s...", cfg.Address, cfg.Root)
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /", fileServer(cfg.Root))
 
 	loggedMux := LogMiddleware(mux)
 
-	err = http.ListenAndServe(":1112", loggedMux)
+	addr := cfg.Address
+	if !strings.Contains(addr, ":") {
+		addr = ":" + addr
+	}
+	if addr == ":80" || addr == ":8080" || addr == ":1112" {
+		addr = "0.0.0.0" + addr
+	}
+	err = http.ListenAndServe(addr, loggedMux)
 	if err != nil {
 		log.Fatal(err)
 	}
