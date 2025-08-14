@@ -1,0 +1,5 @@
+# Salt HTTP Server Configuration
+
+# Server settings
+address = ":1112"
+root    = "public"

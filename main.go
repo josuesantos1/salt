@@ -4,12 +4,30 @@ import (
 	"log"
 	"net/http"
 	"strings"
-
+	"os"
 	"github.com/andybalholm/brotli"
+	"github.com/pelletier/go-toml/v2"
 )
 
-func fileServer() http.Handler {
-	return http.FileServer(http.Dir("./public"))
+type Config struct {
+	Address string `toml:"address"`
+	Root    string `toml:"root"`
+}
+
+func loadConfig(path string) (*Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var cfg Config
+	if err := toml.Unmarshal(data, &cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
+
+func fileServer(root string) http.Handler {
+	return http.FileServer(http.Dir(root))
 }
 
 type statusRecorder struct {
@@ -54,16 +72,19 @@ func (w *brotliResponseWriter) Write(b []byte) (int, error) {
 }
 
 func main() {
+	cfg, err := loadConfig("config.toml")
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
 
-	log.Println("Salt HTTP server starting on :1112...")
+	log.Printf("Salt HTTP server starting on %s...", cfg.Address)
 
 	mux := http.NewServeMux()
-
-	mux.Handle("GET /", fileServer())
+	mux.Handle("GET /", fileServer(cfg.Root))
 
 	loggedMux := LogMiddleware(mux)
 
-	err := http.ListenAndServe(":1112", loggedMux)
+	err = http.ListenAndServe(":1112", loggedMux)
 	if err != nil {
 		log.Fatal(err)
 	}
