@@ -15,15 +15,24 @@ type Config struct {
 }
 
 func loadConfig(path string) (*Config, error) {
+	cfg := &Config{
+		Address: "1112",
+		Root:    "public",
+	}
+
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return cfg, nil
+	}
+
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	var cfg Config
-	if err := toml.Unmarshal(data, &cfg); err != nil {
+
+	if err := toml.Unmarshal(data, cfg); err != nil {
 		return nil, err
 	}
-	return &cfg, nil
+	return cfg, nil
 }
 
 func fileServer(root string) http.Handler {
@@ -74,7 +83,11 @@ func (w *brotliResponseWriter) Write(b []byte) (int, error) {
 func main() {
 	cfg, err := loadConfig("config.toml")
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		if os.IsNotExist(err) {
+			log.Printf("Config file not found, using defaults: %v", err)
+		} else {
+			log.Fatalf("Failed to load config: %v", err)
+		}
 	}
 
 	log.Printf("Salt HTTP server starting on %s...", cfg.Address)
