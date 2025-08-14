@@ -28,6 +28,9 @@ func LogMiddleware(next http.Handler) http.Handler {
 }
 
 func main() {
+
+	log.Println("Salt HTTP server starting on :1112...")
+
 	mux := http.NewServeMux()
 
 	mux.Handle("GET /", fileServer())
